@@ -1,0 +1,57 @@
+---
+- name: Assert input
+  ansible.builtin.assert:
+    that:
+      - neovim_state in ['present', 'absent']
+
+- name: Present
+  when: neovim_state == "present"
+  block:
+
+    - name: Download
+      ansible.builtin.get_url:
+        url: "{{ neovim_url }}"
+        dest: "/tmp/{{ neovim_url | basename }}"
+        mode: "0644"
+
+    - name: Extract
+      become: true
+      ansible.builtin.unarchive:
+        src: "/tmp/{{ neovim_url | basename }}"
+        dest: "/opt"
+        creates: "/opt/nvim-linux64"
+        remote_src: true
+
+    - name: Ensure /etc/profile.d
+      become: true
+      ansible.builtin.file:
+        path: /etc/profile.d
+        state: directory
+        owner: root
+        group: root
+        mode: u=rwx,go=rx
+
+    - name: Add to PATH
+      become: true
+      ansible.builtin.copy:
+        content: |
+          export PATH="$PATH:/opt/nvim-linux64/bin"
+        dest: /etc/profile.d/neovim.sh
+        owner: root
+        group: root
+        mode: u=rw,go=r
+
+- name: Absent
+  when: neovim_state == "absent"
+  block:
+    - name: Remove from PATH
+      become: true
+      ansible.builtin.file:
+        path: /etc/profile.d/neovim.sh
+        state: absent
+
+    - name: Remove installation dir
+      become: true
+      ansible.builtin.file:
+        path: "/opt/nvim-linux64"
+        state: absent
