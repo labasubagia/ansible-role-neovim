@@ -1,4 +1,4 @@
-Golang
+Neovim
 =========
 
 Ansible role to install [Neovim](https://neovim.io/) linux
